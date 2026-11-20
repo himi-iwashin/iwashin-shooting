@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#062b47">
+<meta name="description" content="イワシんと氷見の海を守る、スマホで遊べるシューティングゲーム。">
+<title>イワシんの海まもり大作戦</title>
+<style>
+:root{color-scheme:dark;--ink:#f5fbff;--mint:#74f0dc;--gold:#ffe08a;--pink:#ff8fa7}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#041b31;color:var(--ink);font-family:'M PLUS Rounded 1c',system-ui,sans-serif;touch-action:none}
+body{display:grid;place-items:center;background:radial-gradient(ellipse at 50% 10%,#15577a 0,#092f4e 40%,#041b31 100%)}
+#game{position:relative;width:min(100vw,56.25vh,480px);height:min(100dvh,177.78vw,854px);overflow:hidden;border:1px solid #7ddbd344;border-radius:24px;background:linear-gradient(#12547a 0%,#0b4267 36%,#063553 70%,#041e3a 100%);box-shadow:0 20px 90px #0009;isolation:isolate}
+@media(max-width:520px){#game{width:100vw;height:100dvh;border:0;border-radius:0}}
+canvas{position:absolute;inset:0;width:100%;height:100%;z-index:1}
+.hud{position:absolute;z-index:3;inset:0 0 auto;padding:calc(env(safe-area-inset-top) + 14px) 16px 0;display:flex;justify-content:space-between;align-items:flex-start;pointer-events:none;text-shadow:0 2px 8px #001a2b}
+.brand{font-size:12px;font-weight:900;letter-spacing:.08em;color:#bffdf0}.stats{display:flex;gap:8px}.pill{background:#001d34a8;border:1px solid #b5f8ff45;border-radius:99px;padding:7px 11px;font-size:13px;font-weight:800;backdrop-filter:blur(8px)}.hearts{color:#ff9bb0;letter-spacing:2px}
+.bossbar{position:absolute;z-index:4;top:calc(env(safe-area-inset-top) + 58px);left:14%;width:72%;height:8px;background:#00172b99;border:1px solid #ffffff44;border-radius:99px;overflow:hidden;display:none}.bossbar.show{display:block}.bossfill{width:100%;height:100%;background:linear-gradient(90deg,#ff7893,#ffd179);transition:width .15s}
+.overlay{position:absolute;inset:0;z-index:5;display:grid;place-items:center;padding:24px;background:linear-gradient(#05233c5c,#03192bd9);text-align:center}.overlay.hidden{display:none}.panel{width:min(100%,360px);padding:26px 22px 22px;border-radius:28px;background:linear-gradient(160deg,#145273ed,#082d4bf2);border:1px solid #b7f8ff55;box-shadow:0 18px 55px #001322aa}.mascot{font-size:68px;line-height:1.2;filter:drop-shadow(0 5px 0 #001b31)}h1{font-size:26px;line-height:1.35;margin:10px 0 8px;font-weight:900;letter-spacing:.02em}.lead{font-size:14px;line-height:1.8;color:#d7f4fa;margin:0 0 17px}.how{font-size:12px;line-height:1.75;color:#bde4ef;background:#031f35a8;border-radius:15px;padding:10px 12px;margin:0 0 18px}.btn{border:0;border-radius:99px;padding:13px 28px;background:linear-gradient(100deg,#ffdc75,#ffb753);color:#18314a;font:900 17px inherit;font-family:inherit;font-size:17px;font-weight:900;box-shadow:0 5px 0 #bc763f;cursor:pointer}.btn:active{transform:translateY(3px);box-shadow:0 2px 0 #bc763f}.small{font-size:11px;color:#a9d5e3;margin-top:12px}
+.mascot img{width:76px;height:76px;object-fit:cover;border-radius:50%;border:3px solid #d7ffff;vertical-align:middle}
+.toast{position:absolute;z-index:4;top:20%;left:50%;transform:translate(-50%,-8px);opacity:0;pointer-events:none;padding:9px 16px;border-radius:99px;background:#e4fff2;color:#095342;font-weight:900;white-space:nowrap;transition:.25s}.toast.on{opacity:1;transform:translate(-50%,0)}
+.sound{position:absolute;z-index:4;right:14px;bottom:calc(env(safe-area-inset-bottom) + 12px);width:42px;height:42px;border-radius:50%;border:1px solid #b8efff55;background:#062b47a8;color:white;font-size:18px}
+</style>
+</head>
+<body>
+<main id="game" aria-label="イワシんの海まもり大作戦">
+  <canvas id="stage"></canvas>
+  <header class="hud"><div class="brand">🐟 HIMI OCEAN GUARDIANS</div><div class="stats"><div class="pill">★ <span id="score">0</span></div><div class="pill hearts" id="hearts">♥♥♥</div></div></header>
+  <div class="bossbar" id="bossbar"><div class="bossfill" id="bossfill"></div></div>
+  <div class="toast" id="toast">魚の仲間を救出！</div>
+  <section class="overlay" id="overlay"><div class="panel"><div class="mascot"><img src="iwashin-character.jpg" alt="イワシん"></div><h1>イワシんの<br>海まもり大作戦</h1><p class="lead">氷見の海にあらわれた<br>ごみモンスターから、魚の仲間を守ろう！</p><p class="how">画面をタッチしてイワシんを動かそう<br>泡を当てて海ごみを片づけよう<br>氷見の魚たちを助けるとボーナス！</p><button class="btn" id="start">海へ出発！</button><div class="small">指を離しても自動で泡を発射するよ</div></div></section>
+  <button class="sound" id="sound" aria-label="効果音の切り替え">♫</button>
+</main>
+<script>
+(()=>{
+const canvas=document.querySelector('#stage'),ctx=canvas.getContext('2d'),game=document.querySelector('#game');
+const iwashinArt=new Image();iwashinArt.src='iwashin-character.jpg';const seafoodSheet=new Image();seafoodSheet.src='seafood-icons.png';const iconArts=[seafoodSheet];
+const scoreEl=document.querySelector('#score'),heartsEl=document.querySelector('#hearts'),overlay=document.querySelector('#overlay'),startBtn=document.querySelector('#start'),bossbar=document.querySelector('#bossbar'),bossfill=document.querySelector('#bossfill'),toast=document.querySelector('#toast'),soundBtn=document.querySelector('#sound');
+let W=0,H=0,dpr=1,mode='title',last=0,elapsed=0,score=0,lives=3,player,shots=[],foes=[],sparks=[],bubbles=[],boss=null,spawnClock=0,fireClock=0,toastClock=0,muted=false,audio=null,pointerDown=false,targetX=null,targetY=null,shake=0;
+const rand=(a,b)=>a+Math.random()*(b-a),clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+function resize(){const r=game.getBoundingClientRect();dpr=Math.min(devicePixelRatio||1,2);W=r.width;H=r.height;canvas.width=W*dpr;canvas.height=H*dpr;ctx.setTransform(dpr,0,0,dpr,0,0);if(player){player.x=clamp(player.x,28,W-28);player.y=clamp(player.y,H*.45,H-65)}}
+new ResizeObserver(resize).observe(game);resize();
+function sound(freq=520,dur=.07,type='sine',vol=.035){if(muted)return;try{audio??=new(window.AudioContext||window.webkitAudioContext)();if(audio.state==='suspended')audio.resume();const o=audio.createOscillator(),g=audio.createGain();o.type=type;o.frequency.value=freq;g.gain.setValueAtTime(vol,audio.currentTime);g.gain.exponentialRampToValueAtTime(.001,audio.currentTime+dur);o.connect(g);g.connect(audio.destination);o.start();o.stop(audio.currentTime+dur)}catch{}}
+soundBtn.onclick=()=>{muted=!muted;soundBtn.textContent=muted?'♪':'♫'};
+function begin(){mode='play';elapsed=0;score=0;lives=3;shots=[];foes=[];sparks=[];bubbles=[];boss=null;spawnClock=.5;fireClock=0;player={x:W/2,y:H*.78,r:22,inv:0,power:0};overlay.classList.add('hidden');bossbar.classList.remove('show');updateHUD();last=performance.now();requestAnimationFrame(loop);sound(700,.12)}
+startBtn.onclick=begin;
+function updateHUD(){scoreEl.textContent=score.toLocaleString('ja-JP');heartsEl.textContent='♥'.repeat(lives)+'♡'.repeat(3-lives)}
+function notice(t){toast.textContent=t;toast.classList.add('on');toastClock=1.5}
+function setTarget(e){const r=canvas.getBoundingClientRect();targetX=e.clientX-r.left;targetY=e.clientY-r.top;pointerDown=true}
+canvas.addEventListener('pointerdown',e=>{setTarget(e);canvas.setPointerCapture(e.pointerId)});canvas.addEventListener('pointermove',e=>{if(pointerDown)setTarget(e)});canvas.addEventListener('pointerup',()=>pointerDown=false);canvas.addEventListener('pointercancel',()=>pointerDown=false);
+window.addEventListener('keydown',e=>{if(e.key==='Enter'&&mode!=='play')begin();if(!player)return;const k=e.key.toLowerCase();if(k==='arrowleft'||k==='a')targetX=player.x-65;if(k==='arrowright'||k==='d')targetX=player.x+65;if(k==='arrowup'||k==='w')targetY=player.y-65;if(k==='arrowdown'||k==='s')targetY=player.y+65});
+function shoot(){shots.push({x:player.x,y:player.y-23,vy:-H*1.05,r:6,power:player.power>0?2:1});sound(740,.035,'triangle',.012)}
+function spawn(){const roll=Math.random();if(roll<.22&&elapsed>9){foes.push({kind:'fish',x:rand(30,W-30),y:-30,vx:rand(-25,25),vy:rand(55,80),r:17,hp:1,phase:rand(0,6)});return}
+const kind=roll<.58?'bag':roll<.82?'net':'bottle';foes.push({kind,x:rand(28,W-28),y:-40,vx:rand(-32,32),vy:rand(60,115)+(elapsed*.5),r:kind==='net'?21:17,hp:kind==='net'?2:1,phase:rand(0,7)})}
+function bossStart(){boss={x:W/2,y:110,hp:24,max:24,t:0,hit:0};bossbar.classList.add('show');notice('ごみモンスターがあらわれた！');sound(150,.5,'sawtooth',.07)}
+function burst(x,y,color,n=10){for(let i=0;i<n;i++){const a=rand(0,Math.PI*2),s=rand(30,180);sparks.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,life:rand(.3,.8),max:.8,color,r:rand(2,5)})}}
+function hitPlayer(){if(player.inv>0)return;lives--;player.inv=1.25;shake=9;burst(player.x,player.y,'#ff96ab',16);sound(130,.22,'sawtooth',.06);updateHUD();if(lives<=0)finish(false)}
+function finish(win){mode=win?'win':'over';bossbar.classList.remove('show');overlay.classList.remove('hidden');const best=Math.max(score,Number(localStorage.getItem('iwashinShootBest')||0));localStorage.setItem('iwashinShootBest',best);overlay.querySelector('.mascot').textContent=win?'🌊🐟':'🐟💫';overlay.querySelector('h1').innerHTML=win?'氷見の海を<br>守りきった！':'もう一度、<br>海を守ろう！';overlay.querySelector('.lead').innerHTML=win?`魚の仲間たちが元気に泳ぎだした！<br>スコア <b>${score.toLocaleString('ja-JP')}</b>`:`スコア <b>${score.toLocaleString('ja-JP')}</b><br>ハイスコア <b>${best.toLocaleString('ja-JP')}</b>`;overlay.querySelector('.how').textContent=win?'海の仲間たちから「ありがとう！」':'泡を当てて、ごみを片づけよう。魚にぶつからないように！';startBtn.textContent='もう一度あそぶ';sound(win?880:100,.45,win?'sine':'triangle',.05)}
+function update(dt){elapsed+=dt;fireClock-=dt;spawnClock-=dt;toastClock-=dt;if(toastClock<=0)toast.classList.remove('on');if(shake>0)shake=Math.max(0,shake-dt*22);if(player.inv>0)player.inv-=dt;if(player.power>0)player.power-=dt;
+if(targetX!==null&&pointerDown){player.x+=(targetX-player.x)*Math.min(1,dt*11);player.y+=(clamp(targetY,H*.47,H-54)-player.y)*Math.min(1,dt*11)}
+if(fireClock<=0){shoot();fireClock=player.power>0?.16:.28}
+if(elapsed<47&&spawnClock<=0){spawn();spawnClock=Math.max(.32,rand(.8,1.3)-elapsed*.008)}if(elapsed>=48&&!boss){bossStart()}
+shots.forEach(s=>s.y+=s.vy*dt);shots=shots.filter(s=>s.y>-20);
+foes.forEach(f=>{f.y+=f.vy*dt;f.x+=Math.sin(elapsed*1.6+f.phase)*f.vx*dt;if(f.kind==='fish')f.x+=Math.sin(elapsed*3+f.phase)*38*dt});
+for(let i=foes.length-1;i>=0;i--){const f=foes[i];let gone=false;for(let j=shots.length-1;j>=0;j--){const s=shots[j];if(Math.hypot(s.x-f.x,s.y-f.y)<f.r+s.r){f.hp-=s.power;shots.splice(j,1);burst(s.x,s.y,f.kind==='fish'?'#a9fff1':'#ffe18e',4);if(f.hp<=0){gone=true;if(f.kind==='fish'){score+=250;player.power=5;notice('魚の仲間を救出！ パワーアップ！');sound(900,.16)}else{score+=f.kind==='net'?120:80;sound(420,.06)}updateHUD()}break}}
+if(!gone&&Math.hypot(player.x-f.x,player.y-f.y)<player.r+f.r-5){if(f.kind==='fish'){score+=300;notice('仲間とすれちがった！ +300');updateHUD()}else hitPlayer();gone=true}
+if(f.y>H+40)gone=true;if(gone){if(f.kind!=='fish'&&f.hp<=0)burst(f.x,f.y,'#f6ca72',12);foes.splice(i,1)}}
+if(boss){boss.t+=dt;boss.x=W/2+Math.sin(boss.t*1.25)*W*.28;boss.y=100+Math.sin(boss.t*2)*12;boss.hit=Math.max(0,boss.hit-dt);for(let j=shots.length-1;j>=0;j--){const s=shots[j];if(Math.hypot(s.x-boss.x,s.y-boss.y)<48+s.r){boss.hp-=s.power;boss.hit=.08;shots.splice(j,1);burst(s.x,s.y,'#ffe18e',3);if(boss.hp<=0){score+=1500;updateHUD();boss=null;bossbar.classList.remove('show');notice('海がきれいになった！');setTimeout(()=>finish(true),1100);break}}}if(boss){bossfill.style.width=`${Math.max(0,boss.hp/boss.max*100)}%`;if(Math.hypot(player.x-boss.x,player.y-boss.y)<50)hitPlayer();if(elapsed>79){finish(false)}}}
+sparks.forEach(p=>{p.x+=p.vx*dt;p.y+=p.vy*dt;p.vx*=.97;p.vy*=.97;p.life-=dt});sparks=sparks.filter(p=>p.life>0);
+if(elapsed>47&&!boss&&mode==='play'){}
+}
+function drawIwashin(x,y,size){if(!iwashinArt.complete||!iwashinArt.naturalWidth){fish(x,y,size);return}ctx.save();ctx.beginPath();ctx.arc(x,y,size,0,Math.PI*2);ctx.clip();ctx.fillStyle='#fff';ctx.fillRect(x-size,y-size,size*2,size*2);const side=Math.min(iwashinArt.naturalWidth,iwashinArt.naturalHeight);ctx.drawImage(iwashinArt,(iwashinArt.naturalWidth-side)/2,(iwashinArt.naturalHeight-side)/2,side,side,x-size,y-size,size*2,size*2);ctx.restore();ctx.strokeStyle='#e8fbff';ctx.lineWidth=2.5;ctx.beginPath();ctx.arc(x,y,size,0,Math.PI*2);ctx.stroke()}
+function drawSeaIcon(x,y,size,index){const im=iconArts[Math.abs(index)%iconArts.length];if(!im||!im.complete||!im.naturalWidth){drawIwashin(x,y,size);return}ctx.save();ctx.beginPath();ctx.arc(x,y,size,0,Math.PI*2);ctx.clip();const sw=im.naturalWidth/3,sh=im.naturalHeight/2,n=Math.abs(index)%6,sx=(n%3)*sw,sy=Math.floor(n/3)*sh;ctx.drawImage(im,sx,sy,sw,sh,x-size,y-size,size*2,size*2);ctx.restore();ctx.strokeStyle='#d8ffffaa';ctx.lineWidth=1.5;ctx.beginPath();ctx.arc(x,y,size,0,Math.PI*2);ctx.stroke()}
+function draw(){ctx.save();if(shake)ctx.translate(rand(-shake,shake),rand(-shake,shake));ctx.clearRect(-12,-12,W+24,H+24);
+const g=ctx.createLinearGradient(0,0,0,H);g.addColorStop(0,'#105476');g.addColorStop(.5,'#0a4568');g.addColorStop(1,'#04233f');ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
+// light shafts and sea-floor ripples
+for(let i=0;i<5;i++){const x=(i*W/4+Math.sin(elapsed*.3+i)*22);ctx.fillStyle=`rgba(155,239,232,${.035+Math.sin(elapsed+i)*.012})`;ctx.beginPath();ctx.moveTo(x-28,0);ctx.lineTo(x+12,0);ctx.lineTo(x+100,H);ctx.lineTo(x+10,H);ctx.fill()}
+for(let i=0;i<22;i++){let y=((i*61+elapsed*42)% (H+40))-20;let x=(i*97+Math.sin(i+elapsed*.45)*30)%W;ctx.strokeStyle='rgba(167,236,239,.16)';ctx.lineWidth=1;ctx.beginPath();ctx.ellipse(x,y,rand(3,8),rand(5,12),0,0,Math.PI*2);ctx.stroke()}
+ctx.fillStyle='#a6eaf0';ctx.globalAlpha=.24;ctx.fillRect(0,H-24,W,24);ctx.globalAlpha=1;
+shots.forEach(s=>{ctx.shadowBlur=15;ctx.shadowColor='#aaffef';ctx.fillStyle='#dffff2';ctx.beginPath();ctx.ellipse(s.x,s.y,5,10,0,0,Math.PI*2);ctx.fill();ctx.shadowBlur=0});
+foes.forEach(f=>{ctx.save();ctx.translate(f.x,f.y);ctx.rotate(Math.sin(elapsed*2+f.phase)*.18);if(f.kind==='fish'){drawSeaIcon(0,0,f.r,Math.floor(f.phase)%5);ctx.restore();return}ctx.shadowBlur=13;ctx.shadowColor=f.kind==='net'?'#ff7c8d':'#f5cb78';ctx.fillStyle=f.kind==='bag'?'#c5a9ed':f.kind==='net'?'#ff8193':'#ffd27b';if(f.kind==='bottle'){ctx.beginPath();ctx.roundRect(-9,-15,18,30,6);ctx.fill();ctx.fillRect(-4,-20,8,7);ctx.fillStyle='#fff8';ctx.fillRect(-5,-10,3,17)}else if(f.kind==='net'){ctx.beginPath();ctx.arc(0,0,19,0,Math.PI*2);ctx.fill();ctx.strokeStyle='#fff8';ctx.lineWidth=2;for(let d=-12;d<=12;d+=8){ctx.beginPath();ctx.moveTo(d,-17);ctx.lineTo(d,17);ctx.moveTo(-17,d);ctx.lineTo(17,d);ctx.stroke()}}else{ctx.beginPath();ctx.moveTo(-13,-16);ctx.quadraticCurveTo(16,-22,13,5);ctx.quadraticCurveTo(8,20,-12,13);ctx.closePath();ctx.fill();ctx.fillStyle='#fff9';ctx.beginPath();ctx.arc(4,1,3,0,Math.PI*2);ctx.fill()}ctx.shadowBlur=0;ctx.restore()});
+sparks.forEach(p=>{ctx.globalAlpha=Math.max(0,p.life/p.max);ctx.fillStyle=p.color;ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);ctx.fill()});ctx.globalAlpha=1;
+if(boss){ctx.save();ctx.translate(boss.x,boss.y);if(boss.hit>0)ctx.globalAlpha=.72+Math.sin(elapsed*40)*.25;drawSeaIcon(0,0,49,2);ctx.restore()}
+if(player&&mode==='play'){ctx.save();if(player.inv>0&&Math.floor(elapsed*14)%2===0)ctx.globalAlpha=.4;drawIwashin(player.x,player.y,player.r+8);ctx.fillStyle='#eaf9f4';ctx.font='bold 10px system-ui';ctx.textAlign='center';ctx.fillText('イワシん',player.x,player.y+39);ctx.restore()}
+ctx.restore()}
+function loop(now){if(mode!=='play')return;const dt=Math.min(.04,(now-last)/1000);last=now;update(dt);draw();if(mode==='play')requestAnimationFrame(loop)}
+draw();
+})();
+</script>
+</body>
+</html>
